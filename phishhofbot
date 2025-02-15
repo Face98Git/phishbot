@@ -94,11 +94,11 @@ def run_update_leaderboard():
             bands_scores_str.append("  \n")
             bands_scores_str.append(f"Based on current vote tally, Phish's possible vote total: {possible_vote_total:,}  \n")
             bands_scores_str.append("Current vote total divided by days elapsed, multiplied by days remaining.\n\n")
-            bands_scores_str.append(f"Based on current voting trend, Phish's possible vote total: {interval_vote_total:,}  \n")
-            bands_scores_str.append("Number of votes cast since last update * updates per day * days remaining.\n\n")
-            bands_scores_str.append("This number will fluctuate based on voter activity.  \n")
+#            bands_scores_str.append(f"Based on current voting trend, Phish's possible vote total: {interval_vote_total:,}  \n")
+#            bands_scores_str.append("Number of votes cast since last update * updates per day * days remaining.\n\n")
+#            bands_scores_str.append("This number will fluctuate based on voter activity.  \n")
             print(f"Based on current vote tally, Phish's possible vote total could be: {possible_vote_total:,}")
-            print(f"Based on current voting trend, Phish's possible vote total could be: {interval_vote_total:,}")
+#            print(f"Based on current voting trend, Phish's possible vote total could be: {interval_vote_total:,}")
 
         previous_phish_score = phish_score
         
