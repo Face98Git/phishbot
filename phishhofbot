@@ -88,7 +88,7 @@ def run_update_leaderboard():
             term_increase = phish_score - previous_phish_score
             daily_increase = term_increase * term
             days_remaining = (datetime(2025, 4, 21) - datetime.now()).days
-            days_elapsed = (datetime.now() - datetime(2025, 2, 12)).days
+            days_elapsed = (datetime.now() - datetime(2025, 2, 12)).days + (datetime.now().hour / 24)
             possible_vote_total = round((phish_score / days_elapsed) * days_remaining)
             interval_vote_total = round(phish_score + (daily_increase * days_remaining))
             bands_scores_str.append("  \n")
@@ -99,6 +99,10 @@ def run_update_leaderboard():
 #            bands_scores_str.append("This number will fluctuate based on voter activity.  \n")
             print(f"Based on current vote tally, Phish's possible vote total could be: {possible_vote_total:,}")
 #            print(f"Based on current voting trend, Phish's possible vote total could be: {interval_vote_total:,}")
+
+            average_votes_per_day = round(phish_score / days_elapsed)
+            bands_scores_str.append(f"Average votes per day: {average_votes_per_day:,}\n\n")
+            print(f"Average votes per day: {average_votes_per_day:,}")
 
         previous_phish_score = phish_score
         
