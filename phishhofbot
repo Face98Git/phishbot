@@ -1,0 +1,82 @@
+import praw
+import os
+import time
+from dotenv import load_dotenv
+from datetime import datetime, timedelta
+import requests
+from bs4 import BeautifulSoup
+
+load_dotenv()
+
+reddit = praw.Reddit(
+    client_id=os.getenv("bot_id"),
+    client_secret=os.getenv("bot_secret"),
+    username=os.getenv("user"),
+    password=os.getenv("password"),
+    user_agent=os.getenv("user_agent"))
+
+sub=os.getenv("sub")
+widget_id=os.getenv("widget_id")
+
+bands = ["Phish", "Billy Idol", "Soundgarden", "Cyndi Lauper", "Joe Cocker", "Bad Company", "Chubby Checker", "Outkast", "The Black Crowes", "Oasis", "Mariah Carey", "The White Stripes", "Joy Division + New Order", "Maná"]
+page = requests.get("https://vote.rockhall.com/leaderboard")
+soup = BeautifulSoup(page.text, 'html.parser')
+bands_scores = []
+last_updated = datetime.now().strftime("%m-%d %I:%M")
+
+def run_update_leaderboard():
+    while True:
+        scores = []
+        bands_scores.clear()
+        for band in bands:
+            band_tag = soup.find('span', string=band)
+            if band_tag:
+                score_tag = band_tag.find_next('span')
+                score = int(score_tag.text.replace(',', ''))
+                bands_scores.append(f"{band}: {score:,}  \n")
+                scores.append(score)
+                print(f"{band}: {score:,}")
+                if band == "Phish":
+                    phish_score = score                
+
+        if len(scores) > 1:
+            top_score = max(scores)
+            scores.remove(top_score)
+            second_top_score = max(scores)
+            difference = top_score - second_top_score
+            bands_scores.insert(0, f"Phish is ahead by {difference:,} votes!\n\n")
+            print(f"Phish is ahead by {difference:,} votes!")
+
+        votes_needed = 1_005_657 - phish_score
+        bands_scores.insert(15, "  \n")
+        bands_scores.insert(16, f"Phish needs {votes_needed:,} more votes to pass DMB previous top vote count.\n\n")
+        print(f"Phish needs {votes_needed:,} more votes to pass DMB.")
+
+        total_votes = sum(scores) + phish_score
+        phish_percentage = (phish_score / total_votes) * 100
+        bands_scores.append(f"Total votes: {total_votes:,}  \n")
+        bands_scores.append(f"Phish has {phish_percentage:.2f}% of all votes.  \n")
+        print(f"Total votes: {total_votes:,}")
+        print(f"Phish has {phish_percentage:.2f}% of all votes.")
+
+        wiki_content = "".join(bands_scores)
+        subreddit = reddit.subreddit(sub)
+        subreddit.wiki["leaderboard"].edit(content=wiki_content)
+
+        widgets = subreddit.widgets.sidebar
+        for widget in widgets:
+            if widget.id == (widget_id):
+                widget_content = wiki_content + f"Last updated: {last_updated}\n\n"
+                widget.mod.update(text=widget_content)
+
+        print("End of leaderboard")
+        print("Last Updated: ", last_updated)
+        print("Sleeping for 30 minutes")
+        time.sleep(600)
+        print("20 minutes till next update")
+        time.sleep(600)
+        print("10 minutes till next update")
+        time.sleep(600)
+        print("Running script again!")
+
+run_update_leaderboard()
