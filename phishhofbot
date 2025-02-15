@@ -2,7 +2,7 @@ import praw
 import os
 import time
 from dotenv import load_dotenv
-from datetime import datetime, timedelta
+from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 
@@ -13,20 +13,22 @@ reddit = praw.Reddit(
     client_secret=os.getenv("bot_secret"),
     username=os.getenv("user"),
     password=os.getenv("password"),
-    user_agent=os.getenv("user_agent"))
+    user_agent=os.getenv("user_agent")
+)
 
-sub=os.getenv("sub")
-widget_id=os.getenv("widget_id")
-
+previous_difference = None
+sub = os.getenv("sub")
+widget_id = os.getenv("widget_id")
 bands = ["Phish", "Billy Idol", "Soundgarden", "Cyndi Lauper", "Joe Cocker", "Bad Company", "Chubby Checker", "Outkast", "The Black Crowes", "Oasis", "Mariah Carey", "The White Stripes", "Joy Division + New Order", "Maná"]
-page = requests.get("https://vote.rockhall.com/leaderboard")
-soup = BeautifulSoup(page.text, 'html.parser')
-bands_scores = []
-
+    
 def run_update_leaderboard():
+    global previous_difference
     while True:
+        page = requests.get("https://vote.rockhall.com/leaderboard")
+        soup = BeautifulSoup(page.text, 'html.parser')
+        bands_scores = []
         scores = []
-        bands_scores.clear()
+        phish_score = 0
         for band in bands:
             band_tag = soup.find('span', string=band)
             if band_tag:
@@ -36,16 +38,22 @@ def run_update_leaderboard():
                 scores.append(score)
                 print(f"{band}: {score:,}")
                 if band == "Phish":
-                    phish_score = score                
+                    phish_score = score
 
         if len(scores) > 1:
             top_score = max(scores)
             scores.remove(top_score)
             second_top_score = max(scores)
             difference = top_score - second_top_score
-            bands_scores.insert(0, f"Phish has a {difference:,} vote lead!\n\n")
-            print(f"Phish is ahead by {difference:,} votes!")
-
+            if previous_difference is not None:
+                change_in_lead = difference - previous_difference
+                bands_scores.insert(0, f"Phish has a {difference:,} vote lead! {change_in_lead:+,} votes!\n\n")
+                print(f"Change in lead: {change_in_lead:+,} votes")
+            else:
+                bands_scores.insert(0, f"Phish has a {difference:,} vote lead!\n\n")
+                print(f"Phish is ahead by {difference:,} votes!")
+            previous_difference = difference
+            
         DMB = 1_005_657
         votes_needed = DMB - phish_score
         bands_scores.insert(16, "  \n")
@@ -61,7 +69,7 @@ def run_update_leaderboard():
         print(f"Phish has {phish_percentage:.2f}% of all votes.")
         last_updated = datetime.now().strftime("%m-%d %I:%M")
 
-        widget_stats= "".join(bands_scores)
+        widget_stats = "".join(bands_scores)
         subreddit = reddit.subreddit(sub)
         widgets = subreddit.widgets.sidebar
         for widget in widgets:
@@ -69,7 +77,7 @@ def run_update_leaderboard():
                 widget_content = widget_stats + f"Last updated: {last_updated}  \n" + "See the [wiki](https://www.reddit.com/r/phish/wiki/rrhofleaderboard) for more stats!  \n"
                 widget.mod.update(text=widget_content)
         
-        bands_scores.insert(8, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  \n")
+        bands_scores.insert(8, "~~~~~~~~~~~~~~~~~~~~~~  \n")
 
         BJ = 1_162_146
         votes_needed = BJ - phish_score
@@ -85,11 +93,7 @@ def run_update_leaderboard():
         print("End of leaderboard")
         print("Last Updated: ", last_updated)
         print("Sleeping for 30 minutes")
-        time.sleep(600)
-        print("20 minutes till next update")
-        time.sleep(600)
-        print("10 minutes till next update")
-        time.sleep(600)
+        time.sleep(1800)
         print("Running script again.")
 
 run_update_leaderboard()
