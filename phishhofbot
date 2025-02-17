@@ -63,7 +63,7 @@ def run_update_leaderboard():
         DMB = 1_005_657
         votes_needed = DMB - phish_score
         bands_scores_str.insert(16, "  \n")
-        bands_scores_str.insert(17, f"Phish needs {votes_needed:,} more votes to pass DMB previous top vote count.  \n")
+        bands_scores_str.insert(17, f"Phish needs {votes_needed:,} more votes to pass DMB 2020 vote total.  \n")
         print(f"Phish needs {votes_needed:,} more votes to pass DMB.")
 
         total_votes = sum(scores) + phish_score
@@ -80,7 +80,7 @@ def run_update_leaderboard():
         widgets = subreddit.widgets.sidebar
         for widget in widgets:
             if widget.id == (widget_id):
-                widget_content = widget_stats + f"Last updated: {last_updated}  \n" + "See the [wiki](https://www.reddit.com/r/phish/wiki/rrhofleaderboard) for more stats!  \n"
+                widget_content = widget_stats + "Vote @ https://vote.rockhall.com/  \n" + "See the [wiki](https://www.reddit.com/r/phish/wiki/rrhofleaderboard) for more stats!  \n" + f"Last updated: {last_updated}  \n"
                 widget.mod.update(text=widget_content)
 
         days_remaining = (datetime(2025, 4, 21) - datetime.now()).days
@@ -109,7 +109,7 @@ def run_update_leaderboard():
 
         BJ = 1_162_146
         votes_needed = BJ - phish_score
-        bands_scores_str.insert(18, f"Phish needs {votes_needed:,} more votes to pass Bon Jovi's 2018 top vote count.\n\n")
+        bands_scores_str.insert(18, f"Phish needs {votes_needed:,} more votes to pass Bon Jovi's 2018 vote total.\n\n")
         print(f"Phish needs {votes_needed:,} more votes to pass Bon Jovi.")        
         bands_scores_str.insert(19,"\n\n")
         bands_scores_str.append("  \n")
@@ -121,8 +121,8 @@ def run_update_leaderboard():
 
         print("End of leaderboard")
         print("Last Updated: ", last_updated)
-        print("Sleeping for 30 minute")
-        time.sleep(1800)
+        print("Sleeping for 60 minute")
+        time.sleep(3600)
         print("Running script again.")
 
 run_update_leaderboard()
