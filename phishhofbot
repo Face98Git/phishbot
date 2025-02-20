@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import requests
 from bs4 import BeautifulSoup
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 load_dotenv()
 
@@ -17,110 +19,155 @@ reddit = praw.Reddit(
 
 sub = os.getenv("sub")
 widget_id = os.getenv("widget_id")
+gsheet = os.getenv("gsheet")
+raw_data = os.getenv("raw_data")
 
 bands = ["Phish", "Billy Idol", "Soundgarden", "Cyndi Lauper", "Joe Cocker", "Bad Company", "Chubby Checker", "Outkast", "The Black Crowes", "Oasis", "Mariah Carey", "The White Stripes", "Joy Division + New Order", "Maná"]
 
 previous_difference = None
 previous_phish_score = None
 
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name(gsheet, scope) 
+client = gspread.authorize(creds)
+
+sheet = client.open("Phish Leaderboard").worksheet("Log")
+
+def log_to_google_sheet(data):
+    next_row = len(sheet.get_all_values()) + 1
+    sheet.update(f'A{next_row}', [[data[0]]])  # Date
+    sheet.update(f'B{next_row}', [[data[1]]])  # Time
+    for i, score in enumerate(data[2:2+len(bands)]):
+        sheet.update_cell(next_row, i + 3, score)  # Band scores
+    sheet.update(f'Q{next_row}', [[data[2+len(bands)]]])  # Total votes
+    sheet.update(f'R{next_row}', [[data[3+len(bands)]]])  # Phish percentage
+    sheet.update(f'S{next_row}', [[data[4+len(bands)]]])  # Average votes per day
+    sheet.update(f'T{next_row}', [[data[5+len(bands)]]])  # Votes needed to pass DMB
+    sheet.update(f'U{next_row}', [[data[6+len(bands)]]])  # Votes needed to pass BJ
+
+def update_leaderboard():
+    global previous_difference, previous_phish_score
+    scores = []
+    bands_scores = []
+    page = requests.get("https://vote.rockhall.com/leaderboard")
+    soup = BeautifulSoup(page.text, 'html.parser')
+    phish_score = 0
+    for band in bands:
+        band_tag = soup.find('span', string=band)
+        if band_tag:
+            score_tag = band_tag.find_next('span')
+            score = int(score_tag.text.replace(',', ''))
+            bands_scores.append((band, score))
+            scores.append(score)
+            print(f"{band}: {score:,}")
+            if band == "Phish":
+                phish_score = score
+
+    bands_scores.sort(key=lambda x: x[1], reverse=True)
+    bands_scores_str = [f"{band}: {score:,}  \n" for band, score in bands_scores]
+
+    if len(scores) > 1:
+        top_score = max(scores)
+        scores.remove(top_score)
+        second_top_score = max(scores)
+        difference = top_score - second_top_score
+        if previous_difference is not None:
+            change_in_lead = difference - previous_difference
+            bands_scores_str.insert(0, f"Phish has a {difference:,} vote lead! {change_in_lead:+,} votes!\n\n")
+            print(f"Change in lead: {change_in_lead:+,} votes")
+        else:
+            bands_scores_str.insert(0, f"Phish has a {difference:,} vote lead!\n\n")
+            print(f"Phish is ahead by {difference:,} votes!")
+        previous_difference = difference
+        
+    total_votes = sum(scores) + phish_score
+    phish_percentage = (phish_score / total_votes) * 100
+    bands_scores_str.append("  \n")
+    bands_scores_str.append(f"Total votes: {total_votes:,}  \n")
+    bands_scores_str.append(f"Phish has {phish_percentage:.2f}% of all votes.  \n")
+    print(f"Total votes: {total_votes:,}")
+    print(f"Phish has {phish_percentage:.2f}% of all votes.")
+    last_updated = datetime.now().strftime("%m-%d %I:%M")
+
+    widget_stats = "".join(bands_scores_str)
+    subreddit = reddit.subreddit(sub)
+    widgets = subreddit.widgets.sidebar
+    for widget in widgets:
+        if widget.id == (widget_id):
+            widget_content = widget_stats + "Vote @ https://vote.rockhall.com/  \n" + "See the [wiki](https://www.reddit.com/r/phish/wiki/rrhofleaderboard) for more stats!  \n" + f"Last updated: {last_updated}  \n"
+            widget.mod.update(text=widget_content)
+
+    days_remaining = (datetime(2025, 4, 21) - datetime.now()).days
+    days_elapsed = (datetime.now() - datetime(2025, 2, 12)).days + (datetime.now().hour / 24)
+    possible_vote_total = round((phish_score / days_elapsed) * days_remaining)
+    bands_scores_str.append("  \n")
+    bands_scores_str.append(f"Based on current vote tally, Phish's possible vote total: {possible_vote_total:,}  \n")
+    bands_scores_str.append("Current vote total divided by days elapsed, multiplied by days remaining.\n\n")
+    print(f"Based on current vote tally, Phish's possible vote total could be: {possible_vote_total:,}")
+    if previous_phish_score is not None:
+        term = 24
+        term_increase = phish_score - previous_phish_score
+        daily_increase = term_increase * term
+        interval_vote_total = round(phish_score + (daily_increase * days_remaining))
+#        bands_scores_str.append(f"Based on current voting trend, Phish's possible vote total: {interval_vote_total:,}  \n")
+#        bands_scores_str.append("Number of votes cast since last update * updates per day * days remaining.\n\n")
+#        bands_scores_str.append("This number will fluctuate based on voter activity.  \n")
+#        print(f"Based on current voting trend, Phish's possible vote total could be: {interval_vote_total:,}")
+    previous_phish_score = phish_score
+
+    average_votes_per_day = round(phish_score / days_elapsed)
+    bands_scores_str.append(f"Phish has averaged {average_votes_per_day:,} votes per day.\n\n")
+    bands_scores_str.append(f"Raw vote data can be found here: [Vote Data]({raw_data})\n\n")
+    print(f"Phish has averaged {average_votes_per_day:,} votes per day.")
+    
+    bands_scores_str.insert(8, "~~~~~~~~~~~~~~~~~~~~~~  \n")
+
+    DMB = 1_005_657
+    votes_needed = DMB - phish_score
+    bands_scores_str.insert(16, "  \n")
+    bands_scores_str.insert(17, f"Phish needs {votes_needed:,} more votes to pass DMB 2020 vote total.  \n")
+    print(f"Phish needs {votes_needed:,} more votes to pass DMB.")
+
+    BJ = 1_162_146
+    bj_votes_needed = BJ - phish_score
+    bands_scores_str.insert(18, f"Phish needs {bj_votes_needed:,} more votes to pass Bon Jovi's 2018 vote total.\n\n")
+    print(f"Phish needs {bj_votes_needed:,} more votes to pass Bon Jovi.")        
+    bands_scores_str.insert(19,"\n\n")
+    bands_scores_str.append("  \n")
+    bands_scores_str.append(f"Last updated: {last_updated}\n\n")
+
+    wiki_content = "".join(bands_scores_str)
+    subreddit = reddit.subreddit(sub)
+    subreddit.wiki["rrhofleaderboard"].edit(content=wiki_content)
+
+    print("End of leaderboard")
+    print("Last Updated: ", last_updated)
+
+    date=datetime.now().strftime("%m-%d-%Y")
+    utime=datetime.now().strftime("%H:%M:%S")
+        
+    log_data = [date, utime]
+        
+    for band, score in bands_scores:
+        log_data.append(score)
+
+    log_data.extend([
+        total_votes,
+        phish_percentage,
+        average_votes_per_day,
+        votes_needed,
+        bj_votes_needed
+    ])
+
+    log_to_google_sheet(log_data)
+    print("Logged data to Google Sheet")
+
 def run_update_leaderboard():
     global previous_difference, previous_phish_score
+    update_leaderboard()
     while True:
-        scores = []
-        bands_scores = []
-        page = requests.get("https://vote.rockhall.com/leaderboard")
-        soup = BeautifulSoup(page.text, 'html.parser')
-        phish_score = 0
-        for band in bands:
-            band_tag = soup.find('span', string=band)
-            if band_tag:
-                score_tag = band_tag.find_next('span')
-                score = int(score_tag.text.replace(',', ''))
-                bands_scores.append((band, score))
-                scores.append(score)
-                print(f"{band}: {score:,}")
-                if band == "Phish":
-                    phish_score = score
-
-        bands_scores.sort(key=lambda x: x[1], reverse=True)
-        bands_scores_str = [f"{band}: {score:,}  \n" for band, score in bands_scores]
-
-        if len(scores) > 1:
-            top_score = max(scores)
-            scores.remove(top_score)
-            second_top_score = max(scores)
-            difference = top_score - second_top_score
-            if previous_difference is not None:
-                change_in_lead = difference - previous_difference
-                bands_scores_str.insert(0, f"Phish has a {difference:,} vote lead! {change_in_lead:+,} votes!\n\n")
-                print(f"Change in lead: {change_in_lead:+,} votes")
-            else:
-                bands_scores_str.insert(0, f"Phish has a {difference:,} vote lead!\n\n")
-                print(f"Phish is ahead by {difference:,} votes!")
-            previous_difference = difference
-            
-        total_votes = sum(scores) + phish_score
-        phish_percentage = (phish_score / total_votes) * 100
-        bands_scores_str.append("  \n")
-        bands_scores_str.append(f"Total votes: {total_votes:,}  \n")
-        bands_scores_str.append(f"Phish has {phish_percentage:.2f}% of all votes.  \n")
-        print(f"Total votes: {total_votes:,}")
-        print(f"Phish has {phish_percentage:.2f}% of all votes.")
-        last_updated = datetime.now().strftime("%m-%d %I:%M")
-
-        widget_stats = "".join(bands_scores_str)
-        subreddit = reddit.subreddit(sub)
-        widgets = subreddit.widgets.sidebar
-        for widget in widgets:
-            if widget.id == (widget_id):
-                widget_content = widget_stats + "Vote @ https://vote.rockhall.com/  \n" + "See the [wiki](https://www.reddit.com/r/phish/wiki/rrhofleaderboard) for more stats!  \n" + f"Last updated: {last_updated}  \n"
-                widget.mod.update(text=widget_content)
-
-        days_remaining = (datetime(2025, 4, 21) - datetime.now()).days
-        days_elapsed = (datetime.now() - datetime(2025, 2, 12)).days + (datetime.now().hour / 24)
-        possible_vote_total = round((phish_score / days_elapsed) * days_remaining)
-        bands_scores_str.append("  \n")
-        bands_scores_str.append(f"Based on current vote tally, Phish's possible vote total: {possible_vote_total:,}  \n")
-        bands_scores_str.append("Current vote total divided by days elapsed, multiplied by days remaining.\n\n")
-        print(f"Based on current vote tally, Phish's possible vote total could be: {possible_vote_total:,}")
-        if previous_phish_score is not None:
-            term = 48
-            term_increase = phish_score - previous_phish_score
-            daily_increase = term_increase * term
-            interval_vote_total = round(phish_score + (daily_increase * days_remaining))
-#            bands_scores_str.append(f"Based on current voting trend, Phish's possible vote total: {interval_vote_total:,}  \n")
-#            bands_scores_str.append("Number of votes cast since last update * updates per day * days remaining.\n\n")
-#            bands_scores_str.append("This number will fluctuate based on voter activity.  \n")
-#            print(f"Based on current voting trend, Phish's possible vote total could be: {interval_vote_total:,}")
-        previous_phish_score = phish_score
-
-        average_votes_per_day = round(phish_score / days_elapsed)
-        bands_scores_str.append(f"Phish has averaged {average_votes_per_day:,} votes per day.\n\n")
-        print(f"Phish has averaged {average_votes_per_day:,} votes per day.")
-        
-        bands_scores_str.insert(8, "~~~~~~~~~~~~~~~~~~~~~~  \n")
-
-        DMB = 1_005_657
-        votes_needed = DMB - phish_score
-        bands_scores_str.insert(16, "  \n")
-        bands_scores_str.insert(17, f"Phish needs {votes_needed:,} more votes to pass DMB 2020 vote total.  \n")
-        print(f"Phish needs {votes_needed:,} more votes to pass DMB.")
-
-        BJ = 1_162_146
-        bj_votes_needed = BJ - phish_score
-        bands_scores_str.insert(18, f"Phish needs {bj_votes_needed:,} more votes to pass Bon Jovi's 2018 vote total.\n\n")
-        print(f"Phish needs {bj_votes_needed:,} more votes to pass Bon Jovi.")        
-        bands_scores_str.insert(19,"\n\n")
-        bands_scores_str.append("  \n")
-        bands_scores_str.append(f"Last updated: {last_updated}\n\n")
-
-        wiki_content = "".join(bands_scores_str)        
-        subreddit = reddit.subreddit(sub)
-        subreddit.wiki["rrhofleaderboard"].edit(content=wiki_content)
-
-        print("End of leaderboard")
-        print("Last Updated: ", last_updated)
-        print("Sleeping for 60 minute")
+        update_leaderboard()
+        print("Sleeping for 60 minutes")
         time.sleep(3600)
         print("Running script again.")
 
