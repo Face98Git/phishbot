@@ -17,6 +17,8 @@ reddit = praw.Reddit(
     password=os.getenv("password"),
     user_agent=os.getenv("user_agent"))
 
+print("Starting script...")
+
 sub = os.getenv("sub")
 widget_id = os.getenv("widget_id")
 gsheet = os.getenv("gsheet")
@@ -35,15 +37,15 @@ sheet = client.open("Phish Leaderboard").worksheet("Log")
 
 def log_to_google_sheet(data):
     next_row = len(sheet.get_all_values()) + 1
-    sheet.update(f'A{next_row}', [[data[0]]])  # Date
-    sheet.update(f'B{next_row}', [[data[1]]])  # Time
+    sheet.update(range_name=f'A{next_row}', values=[[data[0]]])  
+    sheet.update(range_name=f'B{next_row}', values=[[data[1]]])  
     for i, score in enumerate(data[2:2+len(bands)]):
-        sheet.update_cell(next_row, i + 3, score)  # Band scores
-    sheet.update(f'Q{next_row}', [[data[2+len(bands)]]])  # Total votes
-    sheet.update(f'R{next_row}', [[data[3+len(bands)]]])  # Phish percentage
-    sheet.update(f'S{next_row}', [[data[4+len(bands)]]])  # Average votes per day
-    sheet.update(f'T{next_row}', [[data[5+len(bands)]]])  # Votes needed to pass DMB
-    sheet.update(f'U{next_row}', [[data[6+len(bands)]]])  # Votes needed to pass BJ
+        sheet.update_cell(next_row, i + 3, score)  
+    sheet.update(range_name=f'Q{next_row}', values=[[data[2+len(bands)]]])  
+    sheet.update(range_name=f'R{next_row}', values=[[data[3+len(bands)]]])  
+    sheet.update(range_name=f'S{next_row}', values=[[data[4+len(bands)]]])  
+    sheet.update(range_name=f'T{next_row}', values=[[data[5+len(bands)]]])  
+    sheet.update(range_name=f'U{next_row}', values=[[data[6+len(bands)]]])  
 
 def update_leaderboard():
     global previous_difference, previous_phish_score
@@ -117,7 +119,7 @@ def update_leaderboard():
 
     average_votes_per_day = round(phish_score / days_elapsed)
     bands_scores_str.append(f"Phish has averaged {average_votes_per_day:,} votes per day.\n\n")
-    bands_scores_str.append(f"Raw vote data can be found here: [Vote Data]({raw_data})\n\n")
+    bands_scores_str.append(f"Logged vote data can be found here: [Vote Data]({raw_data})\n\n")
     print(f"Phish has averaged {average_votes_per_day:,} votes per day.")
     
     bands_scores_str.insert(8, "~~~~~~~~~~~~~~~~~~~~~~  \n")
