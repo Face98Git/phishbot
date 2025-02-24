@@ -35,18 +35,21 @@ client = gspread.authorize(creds)
 
 sheet = client.open("Phish Leaderboard").worksheet("Log")
 
+band_columns = {band: chr(67 + i) for i, band in enumerate(bands)}
+
 def log_to_google_sheet(data):
     next_row = len(sheet.get_all_values()) + 1
-    sheet.update(range_name=f'A{next_row}', values=[[data[0]]])  
-    sheet.update(range_name=f'B{next_row}', values=[[data[1]]])  
+    sheet.update(range_name=f'A{next_row}', values=[[data[0]]])
+    sheet.update(range_name=f'B{next_row}', values=[[data[1]]])
     for i, score in enumerate(data[2:2+len(bands)]):
-        sheet.update_cell(next_row, i + 3, score)  
-    sheet.update(range_name=f'Q{next_row}', values=[[data[2+len(bands)]]])  
-    sheet.update(range_name=f'R{next_row}', values=[[data[3+len(bands)]]])  
-    sheet.update(range_name=f'S{next_row}', values=[[data[4+len(bands)]]])  
-    sheet.update(range_name=f'T{next_row}', values=[[data[5+len(bands)]]])  
-    sheet.update(range_name=f'U{next_row}', values=[[data[6+len(bands)]]])  
-    sheet.update(range_name=f'V{next_row}', values=[[data[7+len(bands)]]])  
+        column = band_columns[bands[i]]
+        sheet.update(range_name=f'{column}{next_row}', values=[[score]])
+    sheet.update(range_name=f'Q{next_row}', values=[[data[2+len(bands)]]])
+    sheet.update(range_name=f'R{next_row}', values=[[data[3+len(bands)]]])
+    sheet.update(range_name=f'S{next_row}', values=[[data[4+len(bands)]]])
+    sheet.update(range_name=f'T{next_row}', values=[[data[5+len(bands)]]])
+    sheet.update(range_name=f'U{next_row}', values=[[data[6+len(bands)]]])
+    sheet.update(range_name=f'V{next_row}', values=[[data[7+len(bands)]]])
     
 def update_leaderboard():
     global previous_difference, previous_phish_score
@@ -91,8 +94,9 @@ def update_leaderboard():
     print(f"Total votes: {total_votes:,}")
     print(f"Phish has {phish_percentage:.2f}% of all votes.")
     last_updated = datetime.now().strftime("%m-%d %I:%M")
+    bands_scores_str.insert(1, "Top 7 Bands  \n")
 
-    widget_stats = "".join(bands_scores_str)
+    widget_stats = "".join(bands_scores_str[:7])
     subreddit = reddit.subreddit(sub)
     widgets = subreddit.widgets.sidebar
     for widget in widgets:
@@ -128,20 +132,20 @@ def update_leaderboard():
 
     DMB2024 = 586_745
     votes_needed_2024 = DMB2024 - phish_score
-    bands_scores_str.insert(16, "  \n")
-    bands_scores_str.insert(17, f"Phish needs {votes_needed_2024:,} more votes to pass DMB 2024 vote total.  \n")
+    bands_scores_str.insert(17, "  \n")
+    bands_scores_str.insert(18, f"Phish needs {votes_needed_2024:,} more votes to pass DMB 2024 vote total.  \n")
     print(f"Phish needs {votes_needed_2024:,} more votes to pass DMB.")
 
     DMB = 1_005_657
     votes_needed = DMB - phish_score
-    bands_scores_str.insert(18, f"Phish needs {votes_needed:,} more votes to pass DMB 2020 vote total. - Not looking so good!  \n")
+    bands_scores_str.insert(19, f"Phish needs {votes_needed:,} more votes to pass DMB 2020 vote total. - Stretch!  \n")
     print(f"Phish needs {votes_needed:,} more votes to pass DMB.")
 
     BJ = 1_162_146
     bj_votes_needed = BJ - phish_score
-#    bands_scores_str.insert(19, f"Phish needs {bj_votes_needed:,} more votes to pass Bon Jovi's 2018 vote total.\n\n")
+#    bands_scores_str.insert(20, f"Phish needs {bj_votes_needed:,} more votes to pass Bon Jovi's 2018 vote total.\n\n")
     print(f"Phish needs {bj_votes_needed:,} more votes to pass Bon Jovi.")        
-    bands_scores_str.insert(19,"\n\n")
+    bands_scores_str.insert(20,"\n\n")
     bands_scores_str.append("  \n")
     bands_scores_str.append(f"Last updated: {last_updated}\n\n")
 
