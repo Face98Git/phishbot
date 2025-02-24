@@ -46,7 +46,8 @@ def log_to_google_sheet(data):
     sheet.update(range_name=f'S{next_row}', values=[[data[4+len(bands)]]])  
     sheet.update(range_name=f'T{next_row}', values=[[data[5+len(bands)]]])  
     sheet.update(range_name=f'U{next_row}', values=[[data[6+len(bands)]]])  
-
+    sheet.update(range_name=f'V{next_row}', values=[[data[7+len(bands)]]])  
+    
 def update_leaderboard():
     global previous_difference, previous_phish_score
     scores = []
@@ -119,20 +120,26 @@ def update_leaderboard():
 
     average_votes_per_day = round(phish_score / days_elapsed)
     bands_scores_str.append(f"Phish has averaged {average_votes_per_day:,} votes per day.\n\n")
+    bands_scores_str.append(f"Everyone is free to use this data for whatever they want, just give credit to u/_Face and r/Phish.\n\n")
     bands_scores_str.append(f"Logged vote data can be found here: [Vote Data]({raw_data})\n\n")
     print(f"Phish has averaged {average_votes_per_day:,} votes per day.")
     
     bands_scores_str.insert(8, "~~~~~~~~~~~~~~~~~~~~~~  \n")
 
+    DMB2024 = 586_745
+    votes_needed_2024 = DMB2024 - phish_score
+    bands_scores_str.insert(16, "  \n")
+    bands_scores_str.insert(17, f"Phish needs {votes_needed_2024:,} more votes to pass DMB 2024 vote total.  \n")
+    print(f"Phish needs {votes_needed_2024:,} more votes to pass DMB.")
+
     DMB = 1_005_657
     votes_needed = DMB - phish_score
-    bands_scores_str.insert(16, "  \n")
-    bands_scores_str.insert(17, f"Phish needs {votes_needed:,} more votes to pass DMB 2020 vote total.  \n")
+    bands_scores_str.insert(18, f"Phish needs {votes_needed:,} more votes to pass DMB 2020 vote total. - Not looking so good!  \n")
     print(f"Phish needs {votes_needed:,} more votes to pass DMB.")
 
     BJ = 1_162_146
     bj_votes_needed = BJ - phish_score
-    bands_scores_str.insert(18, f"Phish needs {bj_votes_needed:,} more votes to pass Bon Jovi's 2018 vote total.\n\n")
+#    bands_scores_str.insert(19, f"Phish needs {bj_votes_needed:,} more votes to pass Bon Jovi's 2018 vote total.\n\n")
     print(f"Phish needs {bj_votes_needed:,} more votes to pass Bon Jovi.")        
     bands_scores_str.insert(19,"\n\n")
     bands_scores_str.append("  \n")
@@ -158,8 +165,9 @@ def update_leaderboard():
         phish_percentage,
         average_votes_per_day,
         votes_needed,
-        bj_votes_needed
-    ])
+        bj_votes_needed,
+        votes_needed_2024
+        ])
 
     log_to_google_sheet(log_data)
     print("Logged data to Google Sheet")
@@ -170,7 +178,7 @@ def run_update_leaderboard():
     while True:
         update_leaderboard()
         print("Sleeping for 60 minutes")
-        time.sleep(3600)
+        time.sleep(3580)
         print("Running script again.")
 
 run_update_leaderboard()
