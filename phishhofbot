@@ -94,14 +94,14 @@ def update_leaderboard():
     print(f"Total votes: {total_votes:,}")
     print(f"Phish has {phish_percentage:.2f}% of all votes.")
     last_updated = datetime.now().strftime("%m-%d %I:%M")
-    bands_scores_str.insert(1, "Top 7 Bands  \n")
+    bands_scores_str.insert(1, "Top 7  \n")
 
-    widget_stats = "".join(bands_scores_str[:7])
+    widget_stats = "".join(bands_scores_str[:9])
     subreddit = reddit.subreddit(sub)
     widgets = subreddit.widgets.sidebar
     for widget in widgets:
         if widget.id == (widget_id):
-            widget_content = widget_stats + "Vote @ https://vote.rockhall.com/  \n" + "See the [wiki](https://www.reddit.com/r/phish/wiki/rrhofleaderboard) for more stats!  \n" + f"Last updated: {last_updated}  \n"
+            widget_content = widget_stats + "  \n" + "Vote @ https://vote.rockhall.com/  \n" + "See the [wiki](https://www.reddit.com/r/phish/wiki/rrhofleaderboard) for more stats!  \n" + f"Last updated: {last_updated}  \n"
             widget.mod.update(text=widget_content)
 
     days_remaining = (datetime(2025, 4, 21) - datetime.now()).days
