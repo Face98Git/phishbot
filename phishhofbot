@@ -128,24 +128,24 @@ def update_leaderboard():
     bands_scores_str.append(f"Logged vote data can be found here: [Vote Data]({raw_data})\n\n")
     print(f"Phish has averaged {average_votes_per_day:,} votes per day.")
     
-    bands_scores_str.insert(8, "~~~~~~~~~~~~~~~~~~~~~~  \n")
+    bands_scores_str.insert(9, "~~~~~~~~~~~~~~~~~~~~~~  \n")
 
     DMB2024 = 586_745
     votes_needed_2024 = DMB2024 - phish_score
     bands_scores_str.insert(17, "  \n")
-    bands_scores_str.insert(18, f"Phish needs {votes_needed_2024:,} more votes to pass DMB 2024 vote total.  \n")
+    bands_scores_str.insert(18, f"Phish needs {votes_needed_2024:,} more votes to pass DMB 2024 vote total of 586,745.  \n")
     print(f"Phish needs {votes_needed_2024:,} more votes to pass DMB.")
 
     DMB = 1_005_657
     votes_needed = DMB - phish_score
-    bands_scores_str.insert(19, f"Phish needs {votes_needed:,} more votes to pass DMB 2020 vote total. - Stretch!  \n")
+#    bands_scores_str.insert(19, f"Phish needs {votes_needed:,} more votes to pass DMB 2020 vote total. - Stretch!  \n")
     print(f"Phish needs {votes_needed:,} more votes to pass DMB.")
 
     BJ = 1_162_146
     bj_votes_needed = BJ - phish_score
 #    bands_scores_str.insert(20, f"Phish needs {bj_votes_needed:,} more votes to pass Bon Jovi's 2018 vote total.\n\n")
     print(f"Phish needs {bj_votes_needed:,} more votes to pass Bon Jovi.")        
-    bands_scores_str.insert(20,"\n\n")
+    bands_scores_str.insert(19,"\n\n")
     bands_scores_str.append("  \n")
     bands_scores_str.append(f"Last updated: {last_updated}\n\n")
 
@@ -176,13 +176,24 @@ def update_leaderboard():
     log_to_google_sheet(log_data)
     print("Logged data to Google Sheet")
 
+def send_failure_message():
+    try:
+        reddit.redditor('_face').message('Script Alert', 'PhishBot stopped working')
+        print("Sent failure message to _face")
+    except Exception as e:
+        print(f"Failed to send message: {e}")
+
 def run_update_leaderboard():
     global previous_difference, previous_phish_score
-    update_leaderboard()
-    while True:
+    try:
         update_leaderboard()
-        print("Sleeping for 60 minutes")
-        time.sleep(3580)
-        print("Running script again.")
+        while True:
+            update_leaderboard()
+            print("Sleeping for 60 minutes")
+            time.sleep(3580)
+            print("Running script again.")
+    except Exception as e:
+        print(f"Script encountered an error: {e}")
+        send_failure_message()
 
 run_update_leaderboard()
