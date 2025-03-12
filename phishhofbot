@@ -52,12 +52,9 @@ def log_to_google_sheet(data):
     sheet.update(range_name=f'T{next_row}', values=[[data[5 + len(bands)]]])
     sheet.update(range_name=f'U{next_row}', values=[[data[6 + len(bands)]]])
     sheet.update(range_name=f'V{next_row}', values=[[data[7 + len(bands)]]])
-    
-    # Update the row with the sorted data
     sheet.update(values=[sorted_data], range_name=f'A{next_row}:V{next_row}')
 
-# Verify band_columns dictionary
-print("Band columns mapping:", band_columns)
+#print("Band columns mapping:", band_columns)
 
 def update_leaderboard():
     global previous_difference, previous_phish_score
@@ -202,7 +199,7 @@ def run_update_leaderboard():
         except requests.exceptions.RequestException as e:
             print(f"Network error encountered: {e}. Retrying...")
             retry_attempts -= 1
-            time.sleep(60)  # Wait for 1 minute before retrying
+            time.sleep(60)  
         except Exception as e:
             print(f"Script encountered an error: {e}")
             send_failure_message()
