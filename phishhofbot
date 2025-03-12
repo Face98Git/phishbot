@@ -32,25 +32,33 @@ previous_phish_score = None
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name(gsheet, scope) 
 client = gspread.authorize(creds)
-
 sheet = client.open("Phish Leaderboard").worksheet("Log")
 
 band_columns = {band: chr(67 + i) for i, band in enumerate(bands)}
 
 def log_to_google_sheet(data):
     next_row = len(sheet.get_all_values()) + 1
-    sheet.update(range_name=f'A{next_row}', values=[[data[0]]])
-    sheet.update(range_name=f'B{next_row}', values=[[data[1]]])
-    for i, score in enumerate(data[2:2+len(bands)]):
-        column = band_columns[bands[i]]
-        sheet.update(range_name=f'{column}{next_row}', values=[[score]])
-    sheet.update(range_name=f'Q{next_row}', values=[[data[2+len(bands)]]])
-    sheet.update(range_name=f'R{next_row}', values=[[data[3+len(bands)]]])
-    sheet.update(range_name=f'S{next_row}', values=[[data[4+len(bands)]]])
-    sheet.update(range_name=f'T{next_row}', values=[[data[5+len(bands)]]])
-    sheet.update(range_name=f'U{next_row}', values=[[data[6+len(bands)]]])
-    sheet.update(range_name=f'V{next_row}', values=[[data[7+len(bands)]]])
+    header = sheet.row_values(1)
+    sorted_data = [None] * len(header)
+    sorted_data[0] = data[0]
+    sorted_data[1] = data[1]
+    for i, band in enumerate(bands):
+        if band in header:
+            column_index = header.index(band)
+            sorted_data[column_index] = data[2 + i]
+    sheet.update(range_name=f'Q{next_row}', values=[[data[2 + len(bands)]]])
+    sheet.update(range_name=f'R{next_row}', values=[[data[3 + len(bands)]]])
+    sheet.update(range_name=f'S{next_row}', values=[[data[4 + len(bands)]]])
+    sheet.update(range_name=f'T{next_row}', values=[[data[5 + len(bands)]]])
+    sheet.update(range_name=f'U{next_row}', values=[[data[6 + len(bands)]]])
+    sheet.update(range_name=f'V{next_row}', values=[[data[7 + len(bands)]]])
     
+    # Update the row with the sorted data
+    sheet.update(values=[sorted_data], range_name=f'A{next_row}:V{next_row}')
+
+# Verify band_columns dictionary
+print("Band columns mapping:", band_columns)
+
 def update_leaderboard():
     global previous_difference, previous_phish_score
     scores = []
@@ -111,15 +119,7 @@ def update_leaderboard():
     bands_scores_str.append(f"Based on current vote tally, Phish's possible vote total: {possible_vote_total:,}  \n")
     bands_scores_str.append("Current vote total divided by days elapsed, multiplied by days remaining.\n\n")
     print(f"Based on current vote tally, Phish's possible vote total could be: {possible_vote_total:,}")
-    if previous_phish_score is not None:
-        term = 24
-        term_increase = phish_score - previous_phish_score
-        daily_increase = term_increase * term
-        interval_vote_total = round(phish_score + (daily_increase * days_remaining))
-#        bands_scores_str.append(f"Based on current voting trend, Phish's possible vote total: {interval_vote_total:,}  \n")
-#        bands_scores_str.append("Number of votes cast since last update * updates per day * days remaining.\n\n")
-#        bands_scores_str.append("This number will fluctuate based on voter activity.  \n")
-#        print(f"Based on current voting trend, Phish's possible vote total could be: {interval_vote_total:,}")
+
     previous_phish_score = phish_score
 
     average_votes_per_day = round(phish_score / days_elapsed)
@@ -133,7 +133,7 @@ def update_leaderboard():
     DMB2024 = 586_745
     votes_needed_2024 = DMB2024 - phish_score
     bands_scores_str.insert(17, "  \n")
-    bands_scores_str.insert(18, f"Phish needs {votes_needed_2024:,} more votes to pass DMB 2024 vote total of 586,745.  \n")
+#    bands_scores_str.insert(18, f"Phish needs {votes_needed_2024:,} more votes to pass DMB 2024 vote total of 586,745.  \n")
     print(f"Phish needs {votes_needed_2024:,} more votes to pass DMB.")
 
     DMB = 1_005_657
@@ -149,6 +149,8 @@ def update_leaderboard():
     bands_scores_str.append("  \n")
     bands_scores_str.append(f"Last updated: {last_updated}\n\n")
 
+    bands_scores_str.pop(1)
+
     wiki_content = "".join(bands_scores_str)
     subreddit = reddit.subreddit(sub)
     subreddit.wiki["rrhofleaderboard"].edit(content=wiki_content)
@@ -160,6 +162,8 @@ def update_leaderboard():
     utime=datetime.now().strftime("%H:%M:%S")
         
     log_data = [date, utime]
+    
+    bands_scores.sort(key=lambda x: bands.index(x[0]))    
         
     for band, score in bands_scores:
         log_data.append(score)
@@ -173,6 +177,7 @@ def update_leaderboard():
         votes_needed_2024
         ])
 
+
     log_to_google_sheet(log_data)
     print("Logged data to Google Sheet")
 
@@ -185,15 +190,22 @@ def send_failure_message():
 
 def run_update_leaderboard():
     global previous_difference, previous_phish_score
-    try:
-        update_leaderboard()
-        while True:
+    retry_attempts = 60
+    while retry_attempts > 0:
+        try:
             update_leaderboard()
-            print("Sleeping for 60 minutes")
-            time.sleep(3580)
-            print("Running script again.")
-    except Exception as e:
-        print(f"Script encountered an error: {e}")
-        send_failure_message()
+            while True:
+                update_leaderboard()
+                print("Sleeping for 60 minutes")
+                time.sleep(3579)
+                print("Running script again.")
+        except requests.exceptions.RequestException as e:
+            print(f"Network error encountered: {e}. Retrying...")
+            retry_attempts -= 1
+            time.sleep(60)  # Wait for 1 minute before retrying
+        except Exception as e:
+            print(f"Script encountered an error: {e}")
+            send_failure_message()
+            break
 
 run_update_leaderboard()
