@@ -174,7 +174,6 @@ def update_leaderboard():
         votes_needed_2024
         ])
 
-
     log_to_google_sheet(log_data)
     print("Logged data to Google Sheet")
 
