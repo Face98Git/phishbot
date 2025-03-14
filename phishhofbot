@@ -109,12 +109,12 @@ def update_leaderboard():
             widget_content = widget_stats + "  \n" + "Vote @ https://vote.rockhall.com/  \n" + "See the [wiki](https://www.reddit.com/r/phish/wiki/rrhofleaderboard) for more stats!  \n" + f"Last updated: {last_updated}  \n"
             widget.mod.update(text=widget_content)
 
-    days_remaining = (datetime(2025, 4, 21) - datetime.now()).days
+    days_remaining = (datetime(2025, 4, 21) - datetime.now()).days + (1-(datetime.now().hour / 24))
     days_elapsed = (datetime.now() - datetime(2025, 2, 12)).days + (datetime.now().hour / 24)
-    possible_vote_total = round((phish_score / days_elapsed) * days_remaining)
+    possible_vote_total = round(((phish_score / days_elapsed) * days_remaining) + phish_score)
     bands_scores_str.append("  \n")
     bands_scores_str.append(f"Based on current vote tally, Phish's possible vote total: {possible_vote_total:,}  \n")
-    bands_scores_str.append("Current vote total divided by days elapsed, multiplied by days remaining.\n\n")
+    bands_scores_str.append("Current vote total divided by days elapsed, multiplied by days remaining, plus Phish's current total.\n\n")
     print(f"Based on current vote tally, Phish's possible vote total could be: {possible_vote_total:,}")
 
     previous_phish_score = phish_score
@@ -145,9 +145,9 @@ def update_leaderboard():
     bands_scores_str.insert(19,"\n\n")
     bands_scores_str.append("  \n")
     bands_scores_str.append(f"Last updated: {last_updated}\n\n")
-
     bands_scores_str.pop(1)
-
+    bands_scores_str.insert(0, "Vote @ https://vote.rockhall.com/  \n\n")
+ 
     wiki_content = "".join(bands_scores_str)
     subreddit = reddit.subreddit(sub)
     subreddit.wiki["rrhofleaderboard"].edit(content=wiki_content)
@@ -193,7 +193,7 @@ def run_update_leaderboard():
             while True:
                 update_leaderboard()
                 print("Sleeping for 60 minutes")
-                time.sleep(3579)
+                time.sleep(3587)
                 print("Running script again.")
         except requests.exceptions.RequestException as e:
             print(f"Network error encountered: {e}. Retrying...")
