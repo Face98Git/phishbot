@@ -7,6 +7,7 @@ import requests
 from bs4 import BeautifulSoup
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import schedule
 
 load_dotenv()
 
@@ -111,6 +112,9 @@ def update_leaderboard():
 
     days_remaining = (datetime(2025, 4, 21) - datetime.now()).days + (1-(datetime.now().hour / 24))
     days_elapsed = (datetime.now() - datetime(2025, 2, 12)).days + (datetime.now().hour / 24)
+    if days_elapsed == 0:
+        days_elapsed = 1  
+
     possible_vote_total = round(((phish_score / days_elapsed) * days_remaining) + phish_score)
     bands_scores_str.append("  \n")
     bands_scores_str.append(f"Based on current vote tally, Phish's possible vote total: {possible_vote_total:,}  \n")
@@ -179,7 +183,7 @@ def update_leaderboard():
 
 def send_failure_message():
     try:
-        reddit.redditor('_face').message('Script Alert', 'PhishBot stopped working')
+        reddit.redditor('_face').message(subject='Script Alert', message='PhishBot stopped working')
         print("Sent failure message to _face")
     except Exception as e:
         print(f"Failed to send message: {e}")
@@ -193,8 +197,8 @@ def run_update_leaderboard():
             while True:
                 update_leaderboard()
                 print("Sleeping for 60 minutes")
-                time.sleep(3587)
-                print("Running script again.")
+#                time.sleep(3587)
+#                print("Running script again.")
         except requests.exceptions.RequestException as e:
             print(f"Network error encountered: {e}. Retrying...")
             retry_attempts -= 1
@@ -203,5 +207,7 @@ def run_update_leaderboard():
             print(f"Script encountered an error: {e}")
             send_failure_message()
             break
-
-run_update_leaderboard()
+schedule.every().hour.at(":05").do(run_update_leaderboard)
+while True:
+    schedule.run_pending()
+    time.sleep(1)
