@@ -195,8 +195,13 @@ def run_update_leaderboard():
             while True:
                 update_leaderboard()
                 print("Sleeping for 60 minutes")
-#                return schedule.CancelJob
-                time.sleep(60)
+
+                schedule.every().hour.at(":00").do(run_update_leaderboard)
+                while True:
+                    schedule.run_pending()
+                    time.sleep(1)
+
+#                time.sleep(60)
 #                print("Running script again.")
         except requests.exceptions.RequestException as e:
             print(f"Network error encountered: {e}. Retrying...")
@@ -207,7 +212,3 @@ def run_update_leaderboard():
             send_failure_message()
             break
         
-schedule.every().hour.at(":00").do(run_update_leaderboard)
-while True:
-    schedule.run_pending()
-    time.sleep(1)
