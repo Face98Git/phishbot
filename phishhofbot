@@ -181,7 +181,7 @@ def update_leaderboard():
 
 def send_failure_message():
     try:
-        reddit.redditor('_face').message(subject='Script Alert', message='PhishBot stopped working')
+        reddit.redditor('_face').message(subject='Script Alert', message=f'PhishBot stopped working:{e}')
         print("Sent failure message to _face")
     except Exception as e:
         print(f"Failed to send message: {e}")
@@ -192,17 +192,11 @@ def run_update_leaderboard():
     while retry_attempts > 0:
         try:
             update_leaderboard()
-            while True:
-                update_leaderboard()
-                print("Sleeping for 60 minutes")
-
-                schedule.every().hour.at(":00").do(run_update_leaderboard)
-                while True:
-                    schedule.run_pending()
-                    time.sleep(1)
-
-#                time.sleep(60)
-#                print("Running script again.")
+            print("Sleeping until the next hour")
+            now = datetime.now()
+            next_hour = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+            time_to_sleep = (next_hour - now).total_seconds()
+            time.sleep(time_to_sleep)
         except requests.exceptions.RequestException as e:
             print(f"Network error encountered: {e}. Retrying...")
             retry_attempts -= 1
@@ -211,4 +205,5 @@ def run_update_leaderboard():
             print(f"Script encountered an error: {e}")
             send_failure_message()
             break
-        
+
+run_update_leaderboard()
